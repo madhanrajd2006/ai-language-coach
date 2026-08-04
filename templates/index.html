@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Language Coach</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a;
+      --accent:#6c63ff; --accent2:#a78bfa;
+      --green:#22c55e; --red:#ef4444; --yellow:#f59e0b;
+      --text:#e2e8f0; --muted:#94a3b8; --border:#2e3347;
+      --radius:14px; --sidebar-w:260px;
+    }
+    body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); height:100vh; overflow:hidden; }
+
+    /* ════════════════════════════════════════════
+       HOME PAGE
+    ════════════════════════════════════════════ */
+    #home-screen {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      height:100vh;
+      background:radial-gradient(ellipse at 50% 0%,#1e1b4b 0%,#0f1117 70%);
+      padding:24px; gap:32px;
+    }
+    .home-hero { text-align:center; }
+    .home-hero .globe { font-size:4rem; margin-bottom:16px; display:block; }
+    .home-hero h1 {
+      font-size:2.6rem; font-weight:900;
+      background:linear-gradient(135deg,#6c63ff,#a78bfa,#60a5fa);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+      margin-bottom:10px;
+    }
+    .home-hero p { color:var(--muted); font-size:1.05rem; max-width:420px; line-height:1.6; }
+    .home-features {
+      display:flex; gap:16px; flex-wrap:wrap; justify-content:center; max-width:700px;
+    }
+    .feat-chip {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:99px; padding:8px 16px;
+      font-size:0.82rem; color:var(--muted);
+      display:flex; align-items:center; gap:6px;
+    }
+    .home-card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius); padding:32px 36px;
+      width:100%; max-width:480px;
+      display:flex; flex-direction:column; gap:20px;
+    }
+    .lang-group label {
+      display:block; font-size:0.8rem; font-weight:600;
+      text-transform:uppercase; letter-spacing:.08em;
+      color:var(--muted); margin-bottom:8px;
+    }
+    .lang-group select {
+      width:100%; padding:12px 16px;
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:10px; color:var(--text); font-size:1rem;
+      outline:none; cursor:pointer;
+    }
+    .lang-group select:focus { border-color:var(--accent); }
+    .lang-group select option { background:var(--surface2); color:var(--text); }
+    #start-btn {
+      padding:14px; background:linear-gradient(135deg,#6c63ff,#a78bfa);
+      border:none; border-radius:10px; color:#fff;
+      font-size:1rem; font-weight:700; cursor:pointer;
+      transition:opacity .2s,transform .1s; margin-top:4px;
+    }
+    #start-btn:hover { opacity:.9; transform:translateY(-1px); }
+
+    /* ════════════════════════════════════════════
+       APP LAYOUT
+    ════════════════════════════════════════════ */
+    #app { display:none; height:100vh; flex-direction:row; }
+
+    /* ── Sidebar ─────────────────────────────── */
+    #sidebar {
+      width:var(--sidebar-w); background:var(--surface);
+      border-right:1px solid var(--border);
+      display:flex; flex-direction:column; flex-shrink:0;
+      overflow-y:auto; padding-bottom:16px;
+    }
+    .sidebar-logo {
+      padding:16px 14px; border-bottom:1px solid var(--border);
+      margin-bottom:8px; display:flex; align-items:center; gap:10px;
+    }
+    /* Home icon button */
+    #home-icon-btn {
+      width:34px; height:34px; border-radius:10px; flex-shrink:0;
+      background:linear-gradient(135deg,#6c63ff,#a78bfa);
+      border:none; cursor:pointer; font-size:1.1rem;
+      display:flex; align-items:center; justify-content:center;
+      transition:opacity .2s, transform .1s;
+    }
+    #home-icon-btn:hover { opacity:.85; transform:scale(1.05); }
+    .logo-info { display:flex; flex-direction:column; overflow:hidden; }
+    .logo-text {
+      font-size:0.9rem; font-weight:800;
+      background:linear-gradient(135deg,#6c63ff,#a78bfa);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .lang-badge { font-size:0.7rem; color:var(--muted); margin-top:1px; }
+
+    .sidebar-section { padding:8px 10px 4px; font-size:0.68rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); font-weight:600; }
+    .sidebar-btn {
+      display:flex; align-items:center; gap:10px;
+      padding:10px 14px; margin:2px 8px; border-radius:10px;
+      cursor:pointer; font-size:0.88rem; color:var(--text);
+      transition:background .15s; border:none; background:transparent;
+      width:calc(100% - 16px); text-align:left;
+    }
+    .sidebar-btn:hover { background:var(--surface2); }
+    .sidebar-btn.active { background:rgba(108,99,255,.18); color:var(--accent2); }
+    .sidebar-btn .icon { font-size:1.1rem; width:22px; text-align:center; }
+    .submenu { display:none; flex-direction:column; padding:0 8px; }
+    .submenu.open { display:flex; }
+    .sub-btn {
+      padding:7px 14px 7px 46px; margin:1px 0; border-radius:8px;
+      cursor:pointer; font-size:0.82rem; color:var(--muted);
+      background:transparent; border:none; text-align:left;
+      transition:background .15s,color .15s;
+    }
+    .sub-btn:hover { background:var(--surface2); color:var(--text); }
+    .sub-btn.active { color:var(--accent2); }
+    .sidebar-divider { height:1px; background:var(--border); margin:10px 14px; }
+
+    /* ── Chat Area ───────────────────────────── */
+    #chat-area { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+    /* Topbar */
+    #topbar {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 22px; border-bottom:1px solid var(--border);
+      background:var(--surface); flex-shrink:0;
+    }
+    .mode-title { font-size:1rem; font-weight:700; }
+    .mode-desc  { font-size:0.78rem; color:var(--muted); margin-top:1px; }
+    .clear-btn {
+      padding:6px 14px; background:var(--surface2);
+      border:1px solid var(--border); border-radius:8px;
+      color:var(--muted); font-size:0.8rem; cursor:pointer;
+    }
+    .clear-btn:hover { color:var(--red); }
+
+    /* Message pane — each mode gets its own div, shown/hidden */
+    #chat-panes { flex:1; overflow:hidden; position:relative; display:flex; flex-direction:column; }
+    .chat-pane {
+      display:none; flex:1; overflow-y:auto;
+      padding:20px 22px; flex-direction:column; gap:16px;
+    }
+    .chat-pane.active { display:flex; }
+    .chat-pane::-webkit-scrollbar { width:5px; }
+    .chat-pane::-webkit-scrollbar-thumb { background:var(--border); border-radius:99px; }
+
+    /* Progress panel */
+    #progress-panel {
+      display:none; flex:1; flex-direction:column;
+      gap:14px; padding:20px 22px; overflow-y:auto;
+    }
+    #progress-panel.open { display:flex; }
+
+    /* Message bubbles */
+    .msg-row { display:flex; gap:10px; max-width:780px; }
+    .msg-row.user   { align-self:flex-end;   flex-direction:row-reverse; }
+    .msg-row.bot    { align-self:flex-start; }
+    .msg-row.system { align-self:center; }
+    .avatar {
+      width:34px; height:34px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:1rem; flex-shrink:0;
+    }
+    .avatar.bot-av  { background:linear-gradient(135deg,#6c63ff,#a78bfa); }
+    .avatar.user-av { background:var(--surface2); border:1px solid var(--border); }
+    .bubble {
+      padding:11px 15px; border-radius:14px;
+      font-size:0.92rem; line-height:1.55;
+      max-width:580px; word-break:break-word;
+    }
+    .msg-row.user   .bubble { background:linear-gradient(135deg,#6c63ff,#818cf8); color:#fff; border-bottom-right-radius:4px; }
+    .msg-row.bot    .bubble { background:var(--surface2); border:1px solid var(--border); border-bottom-left-radius:4px; }
+    .msg-row.system .bubble { background:rgba(108,99,255,.1); border:1px solid rgba(108,99,255,.25); color:var(--accent2); font-size:0.85rem; text-align:center; }
+
+    /* Grammar card */
+    .grammar-card { margin-top:8px; padding:10px 14px; border-radius:10px; font-size:0.83rem; line-height:1.5; }
+    .grammar-card.error { background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.25); }
+    .grammar-card.ok    { background:rgba(34,197,94,.08);  border:1px solid rgba(34,197,94,.25); }
+    .gc-label { font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; }
+    .grammar-card.error .gc-label { color:var(--red); }
+    .grammar-card.ok    .gc-label { color:var(--green); }
+    .corrected { color:var(--green); font-weight:600; }
+    .reason    { color:var(--muted); margin-top:3px; }
+
+    /* Score card */
+    .score-card { margin-top:8px; padding:12px 14px; border-radius:10px; background:rgba(108,99,255,.08); border:1px solid rgba(108,99,255,.25); font-size:0.83rem; }
+    .sc-title { font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:.06em; color:var(--accent2); margin-bottom:8px; }
+    .score-row { display:flex; align-items:center; gap:10px; margin-bottom:5px; }
+    .score-row .sl { width:110px; color:var(--muted); font-size:0.82rem; }
+    .score-bar-wrap { flex:1; height:6px; background:var(--border); border-radius:99px; overflow:hidden; }
+    .score-bar { height:100%; border-radius:99px; background:linear-gradient(90deg,#6c63ff,#a78bfa); transition:width .6s ease; }
+    .score-num { width:32px; text-align:right; font-weight:700; font-size:0.82rem; }
+    .score-feedback { color:var(--muted); margin-top:6px; font-style:italic; }
+
+    /* Typing indicator */
+    .typing-indicator { display:flex; align-items:center; gap:5px; padding:10px 14px; }
+    .typing-dot { width:7px; height:7px; border-radius:50%; background:var(--muted); animation:bounce 1.2s infinite; }
+    .typing-dot:nth-child(2) { animation-delay:.2s; }
+    .typing-dot:nth-child(3) { animation-delay:.4s; }
+    @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+    /* Progress cards */
+    .prog-card { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; }
+    .prog-card h3 { font-size:0.8rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:10px; }
+    .prog-stat { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:0.88rem; }
+    .prog-stat:last-child { border-bottom:none; }
+    .prog-stat .val { font-weight:700; color:var(--accent2); }
+
+    /* Challenge banner */
+    #challenge-banner {
+      display:none; margin:0 22px 0; padding:12px 16px;
+      background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.3);
+      border-radius:10px; font-size:0.85rem; color:var(--yellow); flex-shrink:0;
+    }
+    #challenge-banner.visible { display:block; }
+
+    /* Input bar */
+    #input-bar {
+      padding:14px 22px; border-top:1px solid var(--border);
+      background:var(--surface); display:flex; gap:10px;
+      align-items:flex-end; flex-shrink:0;
+    }
+    #mode-tag {
+      font-size:0.72rem; padding:3px 9px; border-radius:99px;
+      background:rgba(108,99,255,.15); color:var(--accent2);
+      border:1px solid rgba(108,99,255,.3); white-space:nowrap; align-self:center;
+    }
+    #msg-input {
+      flex:1; background:var(--surface2); border:1px solid var(--border);
+      border-radius:12px; padding:11px 16px; color:var(--text);
+      font-size:0.93rem; resize:none; outline:none;
+      max-height:120px; line-height:1.5; font-family:inherit;
+      transition:border-color .2s;
+    }
+    #msg-input:focus { border-color:var(--accent); }
+    #msg-input::placeholder { color:var(--muted); }
+
+    /* Mic button — stays ON until clicked again */
+    #mic-btn {
+      width:44px; height:44px; border-radius:50%;
+      border:1.5px solid var(--border); background:var(--surface2);
+      color:var(--muted); font-size:1.2rem; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:all .2s; flex-shrink:0; user-select:none;
+    }
+    #mic-btn:hover { border-color:var(--accent); color:var(--accent2); }
+    #mic-btn.recording {
+      background:rgba(239,68,68,.15); border-color:var(--red);
+      color:var(--red); animation:pulse 1s infinite;
+    }
+    /* mic status label */
+    #mic-status {
+      font-size:0.7rem; color:var(--red); align-self:center;
+      white-space:nowrap; display:none;
+    }
+    #mic-status.visible { display:block; }
+    @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)} 50%{box-shadow:0 0 0 8px rgba(239,68,68,0)} }
+
+
+
+    /* Translation lesson card — shown when user types in native language */
+    .translation-card {
+      margin-top:4px; padding:14px 16px; border-radius:12px;
+      background:linear-gradient(135deg,rgba(108,99,255,.1),rgba(96,165,250,.08));
+      border:1px solid rgba(108,99,255,.3); font-size:0.88rem; line-height:1.7;
+    }
+    .translation-card .tc-badge {
+      display:inline-block; font-size:0.68rem; font-weight:700;
+      text-transform:uppercase; letter-spacing:.08em;
+      background:linear-gradient(135deg,#6c63ff,#a78bfa);
+      color:#fff; padding:3px 10px; border-radius:99px; margin-bottom:10px;
+    }
+
+
+    /* ── On-Screen Digital Keyboard ─────────────────── */
+    #keyboard-panel {
+      display:none; flex-direction:column; gap:0;
+      background:var(--surface); border-top:1px solid var(--border);
+      padding:10px 14px 12px; flex-shrink:0; user-select:none;
+    }
+    #keyboard-panel.open { display:flex; }
+
+    /* Keyboard top bar — language selector */
+    .kb-topbar {
+      display:flex; align-items:center; gap:8px;
+      margin-bottom:10px; flex-wrap:wrap;
+    }
+    .kb-topbar span { font-size:0.75rem; color:var(--muted); font-weight:600; }
+    .kb-lang-btn {
+      padding:4px 12px; border-radius:99px; font-size:0.75rem; font-weight:600;
+      border:1.5px solid var(--border); background:var(--surface2);
+      color:var(--muted); cursor:pointer; transition:all .15s;
+    }
+    .kb-lang-btn:hover { border-color:var(--accent); color:var(--accent2); }
+    .kb-lang-btn.active { background:rgba(108,99,255,.2); border-color:var(--accent); color:var(--accent2); }
+    .kb-close {
+      margin-left:auto; padding:4px 10px; border-radius:8px;
+      font-size:0.75rem; border:1px solid var(--border);
+      background:transparent; color:var(--muted); cursor:pointer;
+    }
+    .kb-close:hover { color:var(--red); border-color:var(--red); }
+
+    /* Key rows */
+    .kb-row {
+      display:flex; gap:5px; margin-bottom:5px;
+      justify-content:center; flex-wrap:wrap;
+    }
+    .kb-key {
+      min-width:36px; height:38px; padding:0 8px;
+      border-radius:8px; border:1px solid var(--border);
+      background:var(--surface2); color:var(--text);
+      font-size:0.9rem; cursor:pointer; display:flex;
+      align-items:center; justify-content:center;
+      transition:background .1s, transform .05s;
+      font-family:'Segoe UI',system-ui,sans-serif;
+    }
+    .kb-key:hover  { background:#2d3250; border-color:var(--accent); }
+    .kb-key:active { transform:scale(.92); background:rgba(108,99,255,.25); }
+    .kb-key.wide   { min-width:60px; }
+    .kb-key.wider  { min-width:80px; }
+    .kb-key.space  { min-width:200px; flex:1; max-width:320px; }
+    .kb-key.action { background:rgba(108,99,255,.15); color:var(--accent2); border-color:rgba(108,99,255,.3); }
+    .kb-key.backspace { background:rgba(239,68,68,.08); color:var(--red); border-color:rgba(239,68,68,.25); min-width:70px; }
+    .kb-key.enter-key { background:rgba(34,197,94,.1); color:var(--green); border-color:rgba(34,197,94,.3); min-width:80px; }
+    #kb-btn {
+      width:44px; height:44px; border-radius:50%;
+      border:1.5px solid var(--border); background:var(--surface2);
+      color:var(--muted); font-size:1.1rem; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:all .2s; flex-shrink:0;
+    }
+    #kb-btn:hover { border-color:var(--accent); color:var(--accent2); }
+    #kb-btn.kb-open { background:rgba(108,99,255,.15); border-color:var(--accent); color:var(--accent2); }
+
+    /* Mic language toggle — switch between native and target language */
+    #mic-lang-btn {
+      padding:6px 10px; border-radius:20px; flex-shrink:0;
+      border:1.5px solid var(--border); background:var(--surface2);
+      color:var(--muted); font-size:0.72rem; font-weight:600;
+      cursor:pointer; white-space:nowrap; align-self:center;
+      transition:all .2s;
+    }
+    #mic-lang-btn:hover { border-color:var(--accent); color:var(--accent2); }
+    #mic-lang-btn.native-mode { background:rgba(245,158,11,.12); border-color:var(--yellow); color:var(--yellow); }
+    #mic-lang-btn.target-mode { background:rgba(34,197,94,.12);  border-color:var(--green);  color:var(--green); }
+    /* TTS toggle button */
+    #tts-btn {
+      width:44px; height:44px; border-radius:50%;
+      border:1.5px solid var(--border); background:var(--surface2);
+      color:var(--muted); font-size:1.2rem; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:all .2s; flex-shrink:0; user-select:none;
+    }
+    #tts-btn:hover { border-color:var(--accent); color:var(--accent2); }
+    #tts-btn.tts-on { background:rgba(34,197,94,.15); border-color:var(--green); color:var(--green); }
+    #tts-btn.tts-off { opacity:0.45; }
+    #send-btn {
+      width:44px; height:44px; border-radius:50%; border:none;
+      background:linear-gradient(135deg,#6c63ff,#a78bfa); color:#fff;
+      font-size:1.1rem; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:opacity .2s,transform .1s; flex-shrink:0;
+    }
+    #send-btn:hover { opacity:.9; transform:scale(1.05); }
+    #send-btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     HOME PAGE
+════════════════════════════════════════════ -->
+<div id="home-screen">
+  <div class="home-hero">
+    <span class="globe">&#127757;</span>
+    <h1>AI Language Coach</h1>
+    <p>Your personal AI coach for speaking confidence, grammar mastery, and real-world fluency.</p>
+  </div>
+
+  <div class="home-features">
+    <div class="feat-chip">&#128172; Free Conversation</div>
+    <div class="feat-chip">&#9999;&#65039; Grammar Check</div>
+    <div class="feat-chip">&#127917; Roleplay Scenarios</div>
+    <div class="feat-chip">&#128202; Speaking Scores</div>
+    <div class="feat-chip">&#127891; Coaching Tips</div>
+    <div class="feat-chip">&#127775; Daily Challenges</div>
+    <div class="feat-chip">&#128200; Progress Tracker</div>
+  </div>
+
+  <div class="home-card">
+    <div class="lang-group">
+      <label>Your Native Language</label>
+      <select id="native-sel"><option>Loading...</option></select>
+    </div>
+    <div class="lang-group">
+      <label>Language You Want to Learn</label>
+      <select id="target-sel"><option>Loading...</option></select>
+    </div>
+    <button id="start-btn" onclick="startApp()">Start Learning &#8594;</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     MAIN APP
+════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sidebar-logo">
+      <!-- Home icon — click to go back to home screen -->
+      <button id="home-icon-btn" onclick="goHome()" title="Go to Home">&#127757;</button>
+      <div class="logo-info">
+        <span class="logo-text">AI Language Coach</span>
+        <span class="lang-badge" id="lang-badge">...</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">Practice</div>
+    <button class="sidebar-btn active" id="btn-conv" onclick="setMode('conversation')">
+      <span class="icon">&#128172;</span> Free Conversation
+    </button>
+    <button class="sidebar-btn" onclick="toggleSubmenu('roleplay-sub')">
+      <span class="icon">&#127917;</span> Roleplay Mode
+    </button>
+    <div id="roleplay-sub" class="submenu"></div>
+
+    <button class="sidebar-btn" id="btn-challenge" onclick="setMode('challenge')">
+      <span class="icon">&#127775;</span> Daily Challenge
+    </button>
+
+    <div class="sidebar-section">Improve</div>
+    <button class="sidebar-btn" id="btn-grammar" onclick="setMode('grammar')">
+      <span class="icon">&#9999;&#65039;</span> Grammar Check
+    </button>
+    <button class="sidebar-btn" id="btn-score" onclick="setMode('score')">
+      <span class="icon">&#128202;</span> Speaking Score
+    </button>
+    <button class="sidebar-btn" onclick="toggleSubmenu('coaching-sub')">
+      <span class="icon">&#127891;</span> Coaching Tips
+    </button>
+    <div id="coaching-sub" class="submenu">
+      <button class="sub-btn" onclick="getCoaching('confidence')">&#128170; Confidence</button>
+      <button class="sub-btn" onclick="getCoaching('public_speaking')">&#127908; Public Speaking</button>
+      <button class="sub-btn" onclick="getCoaching('daily_practice')">&#128197; Daily Practice</button>
+      <button class="sub-btn" onclick="getCoaching('general')">&#10024; General Tips</button>
+    </div>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">Stats</div>
+    <button class="sidebar-btn" id="btn-progress" onclick="setMode('progress')">
+      <span class="icon">&#128200;</span> My Progress
+    </button>
+  </div>
+
+  <!-- CHAT AREA -->
+  <div id="chat-area">
+    <div id="topbar">
+      <div>
+        <div class="mode-title" id="mode-title">&#128172; Free Conversation</div>
+        <div class="mode-desc"  id="mode-desc">Chat freely and practise your language skills</div>
+      </div>
+      <button class="clear-btn" onclick="clearCurrentPane()">Clear Chat</button>
+    </div>
+
+    <div id="challenge-banner"></div>
+
+    <!-- One pane per mode — each keeps its own history -->
+    <div id="chat-panes">
+      <div class="chat-pane active" id="pane-conversation"></div>
+      <div class="chat-pane"        id="pane-grammar"></div>
+      <div class="chat-pane"        id="pane-score"></div>
+      <div class="chat-pane"        id="pane-roleplay"></div>
+      <div class="chat-pane"        id="pane-coaching"></div>
+      <div class="chat-pane"        id="pane-challenge"></div>
+    </div>
+    <div id="progress-panel"></div>
+
+
+    <!-- On-Screen Digital Keyboard -->
+    <div id="keyboard-panel">
+      <div class="kb-topbar">
+        <span>&#9000; Keyboard:</span>
+        <button class="kb-lang-btn active" onclick="setKbLang('english')"   id="kbl-english">English</button>
+        <button class="kb-lang-btn"        onclick="setKbLang('tamil')"     id="kbl-tamil">தமிழ்</button>
+        <button class="kb-lang-btn"        onclick="setKbLang('spanish')"   id="kbl-spanish">Español</button>
+        <button class="kb-lang-btn"        onclick="setKbLang('french')"    id="kbl-french">Français</button>
+        <button class="kb-lang-btn"        onclick="setKbLang('german')"    id="kbl-german">Deutsch</button>
+        <button class="kb-lang-btn"        onclick="setKbLang('japanese')"  id="kbl-japanese">日本語</button>
+        <button class="kb-lang-btn"        onclick="setKbLang('arabic')"    id="kbl-arabic">العربية</button>
+        <button class="kb-lang-btn"        onclick="setKbLang('hindi')"     id="kbl-hindi">हिन्दी</button>
+        <button class="kb-lang-btn"        onclick="setKbLang('numbers')"   id="kbl-numbers">123</button>
+        <button class="kb-close"           onclick="toggleKeyboard()">✕ Close</button>
+      </div>
+      <div id="kb-keys"></div>
+    </div>
+
+    <div id="input-bar">
+      <span id="mode-tag">Conversation</span>
+      <textarea id="msg-input" rows="1"
+        placeholder="Type a message or click the mic to speak..."
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <span id="mic-status">&#127897; Listening...</span>
+      <button id="kb-btn" title="Toggle on-screen keyboard" onclick="toggleKeyboard()">&#9000;&#65039;</button>
+      <button id="mic-lang-btn" title="Switch mic language" onclick="toggleMicLang()">&#127760; Native</button>
+      <button id="tts-btn" title="Toggle bot voice on/off" onclick="toggleTTS()">&#128266;</button>
+      <button id="mic-btn" title="Toggle microphone on/off" onclick="toggleMic()">&#127897;&#65039;</button>
+      <button id="send-btn" onclick="sendMessage()">&#10148;</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════
+let currentMode     = 'conversation';
+let currentScenario = '1';
+let currentTopic    = 'general';
+let targetLang      = 'English';
+let nativeLang      = 'English';
+let allLanguages    = {};
+let allScenarios    = {};
+
+// ── Per-mode conversation histories (kept separate) ───
+const chatHistories = {
+  conversation: [], grammar: [], score: [],
+  roleplay: [], coaching: [], challenge: []
+};
+
+// ── Mic state ─────────────────────────────────────────
+// mic stays ON until user explicitly clicks again
+let isRecording  = false;
+let recognition  = null;
+let micManualOff = false;
+
+// ── TTS state ─────────────────────────────────────────
+let ttsEnabled = true;   // ON by default
+let ttsSpeaking = false;
+   // true only when user manually stops mic
+
+// ════════════════════════════════════════════════════════
+// INIT — load languages from server
+// ════════════════════════════════════════════════════════
+async function loadConfig() {
+  try {
+    const res  = await fetch('/config_data');
+    const data = await res.json();
+    allLanguages = data.languages;
+    allScenarios = data.scenarios;
+  } catch(e) {
+    // Hardcoded fallback if server unreachable
+    allLanguages = {
+      "1":{"name":"English","code":"en"},"2":{"name":"Spanish","code":"es"},
+      "3":{"name":"French","code":"fr"},"4":{"name":"German","code":"de"},
+      "5":{"name":"Italian","code":"it"},"6":{"name":"Portuguese","code":"pt"},
+      "7":{"name":"Japanese","code":"ja"},"8":{"name":"Mandarin","code":"zh"},"9":{"name":"Tamil","code":"ta"}
+    };
+    allScenarios = {
+      "1":{"name":"Job Interview","description":"Practice interview questions"},
+      "2":{"name":"Restaurant Ordering","description":"Practice ordering food"},
+      "3":{"name":"Meeting Someone New","description":"Practice introductions"},
+      "4":{"name":"Shopping","description":"Practice buying items"}
+    };
+  }
+  buildDropdowns();
+  buildRoleplayMenu();
+}
+
+function buildDropdowns() {
+  ['native-sel','target-sel'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '';
+    Object.values(allLanguages).forEach(lang => {
+      const o = new Option(lang.name, lang.name);
+      o.dataset.code = lang.code;
+      sel.appendChild(o);
+    });
+  });
+}
+
+function buildRoleplayMenu() {
+  const sub = document.getElementById('roleplay-sub');
+  sub.innerHTML = '';
+  Object.entries(allScenarios).forEach(([id, sc]) => {
+    const btn = document.createElement('button');
+    btn.className = 'sub-btn';
+    btn.dataset.id = id;
+    btn.textContent = sc.name;
+    btn.onclick = () => startRoleplay(id, sc.name);
+    sub.appendChild(btn);
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// HOME / NAVIGATION
+// ════════════════════════════════════════════════════════
+async function startApp() {
+  const nativeSel  = document.getElementById('native-sel');
+  const targetSel  = document.getElementById('target-sel');
+  nativeLang       = nativeSel.value;
+  targetLang       = targetSel.value;
+  const targetCode = targetSel.options[targetSel.selectedIndex].dataset.code || 'en';
+
+  await fetch('/set_language', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ native_lang:nativeLang, target_lang:targetLang, target_code:targetCode })
+  });
+
+  document.getElementById('home-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('lang-badge').textContent = nativeLang + ' → ' + targetLang;
+
+  // Welcome message only in conversation pane
+  addMsgToPane('conversation','system','Welcome! You are learning <strong>' + targetLang + '</strong>. Type in <strong>' + nativeLang + '</strong> to get a translation lesson, or type in <strong>' + targetLang + '</strong> to practise directly!');
+  // Set mic lang button to show target language by default
+  micLangMode = 'target';
+  const mlBtn = document.getElementById('mic-lang-btn');
+  if (mlBtn) {
+    mlBtn.textContent = '\u{1F310} ' + targetLang;
+    mlBtn.classList.add('target-mode');
+    mlBtn.title = 'Mic is listening in ' + targetLang + ' — click to switch to ' + nativeLang;
+  }
+  setMode('conversation');
+  loadDailyChallenge();
+}
+
+function goHome() {
+  // Stop mic if running
+  if (isRecording) forceStopMic();
+  // Hide app, show home
+  document.getElementById('app').style.display        = 'none';
+  document.getElementById('home-screen').style.display = 'flex';
+}
+
+// ════════════════════════════════════════════════════════
+// MODE SWITCHING — each mode has its own chat pane
+// ════════════════════════════════════════════════════════
+const modeMeta = {
+  conversation:{ title:'Free Conversation',  desc:'Chat freely and practise your language skills',    tag:'Conversation', ph:'Type a message or click the mic to speak...', pane:'conversation' },
+  grammar:     { title:'Grammar Check',      desc:'Type or speak a sentence to check for mistakes',  tag:'Grammar Check',ph:'Type a sentence to check...',                 pane:'grammar'      },
+  score:       { title:'Speaking Score',     desc:'Speak or type to get fluency and grammar scores', tag:'Score Mode',   ph:'Type or speak something to be scored...',      pane:'score'        },
+  roleplay:    { title:'Roleplay',           desc:'Practice a real-life conversation scenario',      tag:'Roleplay',     ph:'Your line — type or click the mic...',          pane:'roleplay'     },
+  coaching:    { title:'Coaching Tips',      desc:'Get personalised communication advice',           tag:'Coaching',     ph:'',                                              pane:'coaching'     },
+  challenge:   { title:'Daily Challenge',    desc:"Complete today's speaking challenge",             tag:'Challenge',    ph:'Complete the challenge above...',               pane:'challenge'    },
+  progress:    { title:'My Progress',        desc:'Your learning journey and score history',         tag:'Progress',     ph:'',                                              pane:null           },
+};
+
+function setMode(mode, customTitle, customDesc) {
+  currentMode = mode;
+  const meta  = modeMeta[mode] || modeMeta['conversation'];
+
+  // Update topbar
+  document.getElementById('mode-title').textContent = customTitle || meta.title;
+  document.getElementById('mode-desc').textContent  = customDesc  || meta.desc;
+  document.getElementById('mode-tag').textContent   = meta.tag;
+  document.getElementById('msg-input').placeholder  = meta.ph;
+
+  // Hide all panes, show correct one
+  document.querySelectorAll('.chat-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('progress-panel').classList.remove('open');
+  document.getElementById('progress-panel').style.display = 'none';
+  document.getElementById('challenge-banner').classList.remove('visible');
+
+  if (mode === 'progress') {
+    document.getElementById('progress-panel').style.display = 'flex';
+    document.getElementById('progress-panel').classList.add('open');
+    document.getElementById('input-bar').style.display = 'none';
+    loadProgress();
+  } else {
+    document.getElementById('input-bar').style.display = 'flex';
+    if (meta.pane) {
+      const pane = document.getElementById('pane-' + meta.pane);
+      if (pane) pane.classList.add('active');
+    }
+    if (mode === 'challenge') showChallengeBanner();
+  }
+
+  // Sidebar active state
+  document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+  const btnMap = {conversation:'btn-conv',grammar:'btn-grammar',score:'btn-score',
+                  challenge:'btn-challenge',progress:'btn-progress'};
+  if (btnMap[mode]) document.getElementById(btnMap[mode])?.classList.add('active');
+}
+
+function toggleSubmenu(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+function startRoleplay(id, name) {
+  currentScenario = id;
+  setMode('roleplay','Roleplay: ' + name,'Practising ' + targetLang + ' — ' + name + ' scenario');
+  document.querySelectorAll('#roleplay-sub .sub-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('#roleplay-sub .sub-btn[data-id="' + id + '"]')?.classList.add('active');
+  // Only show intro message if pane is empty
+  const pane = document.getElementById('pane-roleplay');
+  if (!pane.hasChildNodes()) {
+    addMsgToPane('roleplay','system','Roleplay: <strong>' + name + '</strong> started! Respond in ' + targetLang + '.');
+  } else {
+    addMsgToPane('roleplay','system','Switched to: <strong>' + name + '</strong>');
+  }
+}
+
+async function getCoaching(topic) {
+  currentTopic = topic;
+  setMode('coaching','Coaching: ' + topic.replace('_',' ').replace(/\b\w/g,c=>c.toUpperCase()));
+  document.querySelectorAll('#coaching-sub .sub-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  addTypingToPaneId('pane-coaching');
+  try {
+    const res  = await fetch('/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ message:'give tip', mode:'coaching', topic })
+    });
+    const data = await res.json();
+    removeTypingFromPaneId('pane-coaching');
+    const tip = data.reply || 'Could not load tip.';
+    addMsgToPane('coaching','bot', tip);
+    speak(tip);
+  } catch(e) {
+    removeTypingFromPaneId('pane-coaching');
+    addMsgToPane('coaching','bot','Network error.');
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// SEND MESSAGE
+// ════════════════════════════════════════════════════════
+async function sendMessage(overrideText) {
+  const input = document.getElementById('msg-input');
+  const text  = (overrideText || input.value).trim();
+  if (!text) return;
+  input.value = '';
+  autoResize(input);
+
+  const paneId = 'pane-' + (modeMeta[currentMode]?.pane || 'conversation');
+  addMsgToPane(currentMode, 'user', esc(text));
+  document.getElementById('send-btn').disabled = true;
+  addTypingToPaneId(paneId);
+
+  try {
+    const res  = await fetch('/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ message:text, mode:currentMode, scenario_id:currentScenario, topic:currentTopic })
+    });
+    const data = await res.json();
+    removeTypingFromPaneId(paneId);
+    if (data.reply) {
+      if (data.is_native) {
+        // Show as a special translation lesson card
+        addTranslationCard(currentMode, data.reply);
+        speak(data.reply);
+      } else {
+        addMsgToPane(currentMode,'bot', esc(data.reply));
+        speak(data.reply);
+      }
+    }
+    if (data.grammar) addGrammarCard(currentMode, data.grammar);
+    if (data.scores)  addScoreCard(currentMode, data.scores);
+    if (currentMode === 'challenge' && data.scores) addMsgToPane('challenge','system','Challenge attempt recorded! Great effort!');
+  } catch(e) {
+    removeTypingFromPaneId(paneId);
+    addMsgToPane(currentMode,'bot','Network error. Please check your connection.');
+  }
+  document.getElementById('send-btn').disabled = false;
+}
+
+// ════════════════════════════════════════════════════════
+// MICROPHONE
+// Stays ON until user clicks the mic button again.
+// continuous=true so it keeps listening across pauses.
+// ════════════════════════════════════════════════════════
+function toggleMic() {
+  if (isRecording) {
+    forceStopMic();   // user manually clicked to turn off
+  } else {
+    startMic();
+  }
+}
+
+function startMic() {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    addMsgToPane(currentMode,'system','Voice input requires Chrome browser.'); return;
+  }
+  micManualOff = false;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition  = new SR();
+
+  // continuous=true: keeps listening, does NOT auto-stop after one phrase
+  recognition.continuous     = true;
+  recognition.interimResults = true;
+
+  // Full language map covering all supported languages
+  const langMap = {
+    English:'en-US', Spanish:'es-ES', French:'fr-FR',  German:'de-DE',
+    Italian:'it-IT', Portuguese:'pt-PT', Japanese:'ja-JP', Mandarin:'zh-CN',
+    Tamil:'ta-IN',   Hindi:'hi-IN',  Arabic:'ar-SA',   Korean:'ko-KR',
+    Russian:'ru-RU', Dutch:'nl-NL',  Turkish:'tr-TR',  Vietnamese:'vi-VN'
+  };
+  // If mic is in native mode, listen in native language; otherwise listen in target language
+  recognition.lang = (micLangMode === 'native')
+    ? (langMap[nativeLang] || 'en-US')
+    : (langMap[targetLang] || 'en-US');
+
+  recognition.onstart = () => {
+    isRecording = true;
+    document.getElementById('mic-btn').classList.add('recording');
+    document.getElementById('mic-btn').innerHTML = '&#9209;&#65039;';
+    document.getElementById('mic-status').classList.add('visible');
+    const listeningLang = (micLangMode === 'native') ? nativeLang : targetLang;
+    document.getElementById('msg-input').placeholder = '&#127897; Listening in ' + listeningLang + '... click mic to stop';
+  };
+
+  recognition.onresult = (event) => {
+    let interim = '', final = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) final   += event.results[i][0].transcript + ' ';
+      else                          interim += event.results[i][0].transcript;
+    }
+    // Show interim text in input box
+    const current = document.getElementById('msg-input').value;
+    if (interim) document.getElementById('msg-input').value = current + interim;
+    // When a final phrase is detected, send it automatically
+    if (final.trim()) {
+      document.getElementById('msg-input').value = '';
+      autoResize(document.getElementById('msg-input'));
+      sendMessage(final.trim());
+    }
+  };
+
+  // If recognition ends (network hiccup etc) and user hasn't manually stopped, restart it
+  recognition.onend = () => {
+    if (!micManualOff && isRecording) {
+      // Small delay then restart to keep mic alive
+      setTimeout(() => { try { recognition.start(); } catch(e){} }, 200);
+    }
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error === 'not-allowed') {
+      forceStopMic();
+      addMsgToPane(currentMode,'system','Microphone permission denied. Please allow mic access in Chrome.');
+    }
+    // For other errors (network, aborted) let onend handle restart
+  };
+
+  try { recognition.start(); } catch(e) { console.error(e); }
+}
+
+
+function toggleMicLang() {
+  // Toggle between native language and target language for mic input
+  const btn = document.getElementById('mic-lang-btn');
+  if (micLangMode === 'target') {
+    micLangMode = 'native';
+    btn.textContent = '&#127760; ' + nativeLang;
+    btn.classList.add('native-mode');
+    btn.classList.remove('target-mode');
+    btn.title = 'Mic listening in ' + nativeLang + ' (your native language) — click to switch';
+  } else {
+    micLangMode = 'target';
+    btn.textContent = '&#127760; ' + targetLang;
+    btn.classList.remove('native-mode');
+    btn.classList.add('target-mode');
+    btn.title = 'Mic listening in ' + targetLang + ' (language you are learning) — click to switch';
+  }
+  // If mic is currently on, restart it with new language
+  if (isRecording) {
+    micManualOff = false;
+    try { recognition?.stop(); } catch(e) {}
+    setTimeout(() => startMic(), 300);
+  }
+}
+
+function forceStopMic() {
+  micManualOff = true;
+  isRecording  = false;
+  try { recognition?.stop(); } catch(e) {}
+  recognition  = null;
+  document.getElementById('mic-btn').classList.remove('recording');
+  document.getElementById('mic-btn').innerHTML = '&#127897;&#65039;';
+  document.getElementById('mic-status').classList.remove('visible');
+  document.getElementById('msg-input').placeholder = modeMeta[currentMode]?.ph || 'Type a message...';
+}
+
+// ════════════════════════════════════════════════════════
+// PROGRESS
+// ════════════════════════════════════════════════════════
+async function loadProgress() {
+  const panel = document.getElementById('progress-panel');
+  panel.innerHTML = '<div style="color:var(--muted);padding:10px">Loading...</div>';
+  try {
+    const res  = await fetch('/progress');
+    const data = await res.json();
+    const scores   = data.score_history || [];
+    const avgF = scores.length ? (scores.reduce((s,x)=>s+(x.fluency||0),0)/scores.length).toFixed(1) : '--';
+    const avgG = scores.length ? (scores.reduce((s,x)=>s+(x.grammar||0),0)/scores.length).toFixed(1) : '--';
+    const avgP = scores.length ? (scores.reduce((s,x)=>s+(x.pronunciation||0),0)/scores.length).toFixed(1) : '--';
+    const vocabLog   = data.vocabulary_log || {};
+    const totalVocab = Object.values(vocabLog).reduce((a,b)=>a+b,0);
+    const vocabRows  = Object.entries(vocabLog).slice(-5).map(([d,v])=>
+      `<div class="prog-stat"><span>${d}</span><span class="val">${v} words</span></div>`).join('') ||
+      '<div class="prog-stat"><span>No data yet</span><span></span></div>';
+    panel.innerHTML = `
+      <div class="prog-card"><h3>Overview</h3>
+        <div class="prog-stat"><span>Learning Since</span><span class="val">${data.start_date||'Today'}</span></div>
+        <div class="prog-stat"><span>Total Sessions</span><span class="val">${data.total_sessions||0}</span></div>
+        <div class="prog-stat"><span>Total Vocabulary</span><span class="val">${totalVocab} words</span></div>
+        <div class="prog-stat"><span>Challenges Done</span><span class="val">${(data.challenges_done||[]).length}</span></div>
+      </div>
+      <div class="prog-card"><h3>Average Scores</h3>
+        <div class="score-row"><span class="sl">Fluency</span><div class="score-bar-wrap"><div class="score-bar" style="width:${avgF==='--'?0:avgF*10}%"></div></div><span class="score-num">${avgF}/10</span></div>
+        <div class="score-row"><span class="sl">Grammar</span><div class="score-bar-wrap"><div class="score-bar" style="width:${avgG==='--'?0:avgG*10}%"></div></div><span class="score-num">${avgG}/10</span></div>
+        <div class="score-row"><span class="sl">Pronunciation</span><div class="score-bar-wrap"><div class="score-bar" style="width:${avgP==='--'?0:avgP*10}%"></div></div><span class="score-num">${avgP}/10</span></div>
+      </div>
+      <div class="prog-card"><h3>Vocabulary — Last 5 Days</h3>${vocabRows}</div>`;
+  } catch(e) {
+    panel.innerHTML = '<div style="color:var(--red);padding:10px">Could not load progress data.</div>';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// DAILY CHALLENGE
+// ════════════════════════════════════════════════════════
+async function loadDailyChallenge() {
+  try {
+    const res  = await fetch('/daily_challenge');
+    const data = await res.json();
+    window._challenge = data.challenge;
+  } catch(e) {}
+}
+
+function showChallengeBanner() {
+  const b = document.getElementById('challenge-banner');
+  b.innerHTML = '<strong>&#127775; Today\'s Challenge:</strong> ' + (window._challenge || 'Loading...');
+  b.classList.add('visible');
+  if (!document.getElementById('pane-challenge').hasChildNodes()) {
+    addMsgToPane('challenge','system','<strong>Today\'s Challenge:</strong> ' + (window._challenge || ''));
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// MESSAGE RENDERING — all writes go to the correct pane
+// ════════════════════════════════════════════════════════
+function getPaneEl(mode) {
+  return document.getElementById('pane-' + (modeMeta[mode]?.pane || 'conversation'));
+}
+
+function addMsgToPane(mode, type, html) {
+  const pane = getPaneEl(mode);
+  if (!pane) return;
+  const row = document.createElement('div');
+  if (type === 'user') {
+    row.className = 'msg-row user';
+    row.innerHTML = `<div class="avatar user-av">&#129489;</div><div class="bubble">${html}</div>`;
+  } else if (type === 'bot') {
+    row.className = 'msg-row bot';
+    row.innerHTML = `<div class="avatar bot-av">&#129302;</div><div class="bubble">${html}</div>`;
+  } else {
+    row.className = 'msg-row system';
+    row.innerHTML = `<div class="bubble">${html}</div>`;
+  }
+  pane.appendChild(row);
+  pane.scrollTop = pane.scrollHeight;
+}
+
+
+function addTranslationCard(mode, html) {
+  const pane = getPaneEl(mode);
+  if (!pane) return;
+  const row = document.createElement('div');
+  row.className = 'msg-row bot';
+  row.innerHTML = `
+    <div class="avatar bot-av">&#129302;</div>
+    <div class="translation-card">
+      <div class="tc-badge">&#127758; Translation Lesson</div>
+      <div>${esc(html)}</div>
+    </div>`;
+  pane.appendChild(row);
+  pane.scrollTop = pane.scrollHeight;
+}
+
+function addGrammarCard(mode, g) {
+  const pane = getPaneEl(mode);
+  if (!pane) return;
+  // Speak the correction
+  if (g.has_error) speak('I found a grammar mistake. The correct sentence is: ' + g.corrected + '. Reason: ' + g.explanation);
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-row bot';
+  wrap.style.marginTop = '-8px';
+  if (g.has_error) {
+    wrap.innerHTML = `<div style="width:34px"></div>
+      <div class="grammar-card error">
+        <div class="gc-label">Grammar Correction</div>
+        <div class="corrected">Corrected: ${esc(g.corrected)}</div>
+        <div class="reason">Reason: ${esc(g.explanation)}</div>
+      </div>`;
+  } else {
+    wrap.innerHTML = `<div style="width:34px"></div>
+      <div class="grammar-card ok">
+        <div class="gc-label">Grammar</div>No mistakes — great job!
+      </div>`;
+  }
+  pane.appendChild(wrap);
+  pane.scrollTop = pane.scrollHeight;
+}
+
+function addScoreCard(mode, s) {
+  const pane = getPaneEl(mode);
+  if (!pane) return;
+  // Speak the score summary
+  speak('Your scores: Fluency ' + s.fluency + ' out of 10. Grammar ' + s.grammar + ' out of 10. Pronunciation ' + s.pronunciation + ' out of 10. ' + (s.feedback||''));
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-row bot';
+  wrap.innerHTML = `<div style="width:34px"></div>
+    <div class="score-card">
+      <div class="sc-title">Speaking Scores</div>
+      <div class="score-row"><span class="sl">Fluency</span><div class="score-bar-wrap"><div class="score-bar" style="width:${s.fluency*10}%"></div></div><span class="score-num">${s.fluency}/10</span></div>
+      <div class="score-row"><span class="sl">Grammar</span><div class="score-bar-wrap"><div class="score-bar" style="width:${s.grammar*10}%"></div></div><span class="score-num">${s.grammar}/10</span></div>
+      <div class="score-row"><span class="sl">Pronunciation</span><div class="score-bar-wrap"><div class="score-bar" style="width:${s.pronunciation*10}%"></div></div><span class="score-num">${s.pronunciation}/10</span></div>
+      <div class="score-feedback">${esc(s.feedback||'')}</div>
+    </div>`;
+  pane.appendChild(wrap);
+  pane.scrollTop = pane.scrollHeight;
+}
+
+function addTypingToPaneId(paneId) {
+  const pane = document.getElementById(paneId);
+  if (!pane) return;
+  const row = document.createElement('div');
+  row.className = 'msg-row bot'; row.id = 'typing-' + paneId;
+  row.innerHTML = `<div class="avatar bot-av">&#129302;</div><div class="bubble"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
+  pane.appendChild(row);
+  pane.scrollTop = pane.scrollHeight;
+}
+
+function removeTypingFromPaneId(paneId) {
+  document.getElementById('typing-' + paneId)?.remove();
+}
+
+// ════════════════════════════════════════════════════════
+// UTILITIES
+// ════════════════════════════════════════════════════════
+function clearCurrentPane() {
+  const pane = getPaneEl(currentMode);
+  if (pane) pane.innerHTML = '';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+
+// ════════════════════════════════════════════════════════
+// TEXT-TO-SPEECH  (Browser Web Speech API)
+// Works in Chrome, Edge, Safari — no library needed.
+// ════════════════════════════════════════════════════════
+
+// Map language names to BCP-47 codes for TTS voice selection
+const ttsLangMap = {
+  'English':'en-US','Spanish':'es-ES','French':'fr-FR','German':'de-DE',
+  'Italian':'it-IT','Portuguese':'pt-PT','Japanese':'ja-JP',
+  'Mandarin':'zh-CN','Tamil':'ta-IN'
+};
+
+function speak(text) {
+  if (!ttsEnabled) return;
+  if (!window.speechSynthesis) return;
+
+  // Strip HTML tags before speaking
+  const plain = text.replace(/<[^>]*>/g, '').replace(/&amp;/g,'&')
+    .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"');
+  if (!plain.trim()) return;
+
+  // Cancel any ongoing speech before speaking new text
+  window.speechSynthesis.cancel();
+
+  const utt  = new SpeechSynthesisUtterance(plain);
+  // For translation lessons speak in target language, for native input speak in target language too
+  // so user hears the correct English (or target) pronunciation
+  utt.lang   = ttsLangMap[targetLang] || 'en-US';
+  utt.rate   = 0.95;   // slightly slower = clearer
+  utt.pitch  = 1.0;
+  utt.volume = 1.0;
+
+  // Pick best available voice for the language
+  const voices = window.speechSynthesis.getVoices();
+  const match  = voices.find(v => v.lang.startsWith(utt.lang.split('-')[0]));
+  if (match) utt.voice = match;
+
+  utt.onstart = () => { ttsSpeaking = true; };
+  utt.onend   = () => { ttsSpeaking = false; };
+  utt.onerror = () => { ttsSpeaking = false; };
+
+  window.speechSynthesis.speak(utt);
+}
+
+function toggleTTS() {
+  ttsEnabled = !ttsEnabled;
+  const btn = document.getElementById('tts-btn');
+  if (ttsEnabled) {
+    btn.classList.add('tts-on');
+    btn.classList.remove('tts-off');
+    btn.title = 'Bot voice ON — click to turn off';
+    btn.innerHTML = '&#128266;';
+  } else {
+    window.speechSynthesis.cancel();
+    btn.classList.remove('tts-on');
+    btn.classList.add('tts-off');
+    btn.title = 'Bot voice OFF — click to turn on';
+    btn.innerHTML = '&#128263;';
+  }
+}
+
+function stopSpeaking() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
+// Voices load async in some browsers — preload them
+if (window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+}
+
+
+// ════════════════════════════════════════════════════════
+// ON-SCREEN DIGITAL KEYBOARD
+// Supports: English, Tamil, Spanish, French, German,
+//           Japanese (Hiragana), Arabic, Hindi, Numbers
+// ════════════════════════════════════════════════════════
+
+let kbLang       = 'english';
+let kbShift      = false;
+let kbCapsLock   = false;
+
+// ── Keyboard layouts ──────────────────────────────────
+const KB_LAYOUTS = {
+
+  english: {
+    normal: [
+      ['q','w','e','r','t','y','u','i','o','p'],
+      ['a','s','d','f','g','h','j','k','l'],
+      ['CAPS','z','x','c','v','b','n','m','⌫'],
+      ['SPACE','.',',','!','?','ENTER']
+    ],
+    shift: [
+      ['Q','W','E','R','T','Y','U','I','O','P'],
+      ['A','S','D','F','G','H','J','K','L'],
+      ['CAPS','Z','X','C','V','B','N','M','⌫'],
+      ['SPACE','.',',','!','?','ENTER']
+    ]
+  },
+
+  tamil: {
+    normal: [
+      ['அ','ஆ','இ','ஈ','உ','ஊ','எ','ஏ','ஐ','ஒ','ஓ','ஔ'],
+      ['க','ங','ச','ஞ','ட','ண','த','ந','ப','ம'],
+      ['ய','ர','ல','வ','ழ','ள','ற','ன','ஷ','ஸ','ஹ','⌫'],
+      ['ா','ி','ீ','ு','ூ','ெ','ே','ை','ொ','ோ','ௌ','்'],
+      ['SPACE','।','!','?','ENTER']
+    ]
+  },
+
+  hindi: {
+    normal: [
+      ['अ','आ','इ','ई','उ','ऊ','ए','ऐ','ओ','औ'],
+      ['क','ख','ग','घ','ङ','च','छ','ज','झ','ञ'],
+      ['ट','ठ','ड','ढ','ण','त','थ','द','ध','न'],
+      ['प','फ','ब','भ','म','य','र','ल','व','⌫'],
+      ['श','ष','स','ह','ा','ि','ी','ु','ू','े','ै','ो','ौ','्','ं'],
+      ['SPACE','।','!','?','ENTER']
+    ]
+  },
+
+  spanish: {
+    normal: [
+      ['q','w','e','r','t','y','u','i','o','p'],
+      ['a','s','d','f','g','h','j','k','l','ñ'],
+      ['CAPS','z','x','c','v','b','n','m','⌫'],
+      ['á','é','í','ó','ú','ü','¡','¿'],
+      ['SPACE','.',',','!','?','ENTER']
+    ],
+    shift: [
+      ['Q','W','E','R','T','Y','U','I','O','P'],
+      ['A','S','D','F','G','H','J','K','L','Ñ'],
+      ['CAPS','Z','X','C','V','B','N','M','⌫'],
+      ['Á','É','Í','Ó','Ú','Ü','¡','¿'],
+      ['SPACE','.',',','!','?','ENTER']
+    ]
+  },
+
+  french: {
+    normal: [
+      ['a','z','e','r','t','y','u','i','o','p'],
+      ['q','s','d','f','g','h','j','k','l','m'],
+      ['CAPS','w','x','c','v','b','n','⌫'],
+      ['à','â','é','è','ê','ë','î','ï','ô','ù','û','ü','ç','œ','æ'],
+      ['SPACE','.',',','!','?','ENTER']
+    ],
+    shift: [
+      ['A','Z','E','R','T','Y','U','I','O','P'],
+      ['Q','S','D','F','G','H','J','K','L','M'],
+      ['CAPS','W','X','C','V','B','N','⌫'],
+      ['À','Â','É','È','Ê','Ë','Î','Ï','Ô','Ù','Û','Ü','Ç','Œ','Æ'],
+      ['SPACE','.',',','!','?','ENTER']
+    ]
+  },
+
+  german: {
+    normal: [
+      ['q','w','e','r','t','z','u','i','o','p','ü'],
+      ['a','s','d','f','g','h','j','k','l','ö','ä'],
+      ['CAPS','y','x','c','v','b','n','m','ß','⌫'],
+      ['SPACE','.',',','!','?','ENTER']
+    ],
+    shift: [
+      ['Q','W','E','R','T','Z','U','I','O','P','Ü'],
+      ['A','S','D','F','G','H','J','K','L','Ö','Ä'],
+      ['CAPS','Y','X','C','V','B','N','M','ẞ','⌫'],
+      ['SPACE','.',',','!','?','ENTER']
+    ]
+  },
+
+  japanese: {
+    normal: [
+      ['あ','い','う','え','お'],
+      ['か','き','く','け','こ'],
+      ['さ','し','す','せ','そ'],
+      ['た','ち','つ','て','と'],
+      ['な','に','ぬ','ね','の'],
+      ['は','ひ','ふ','へ','ほ'],
+      ['ま','み','む','め','も'],
+      ['や','ゆ','よ','ら','り'],
+      ['る','れ','ろ','わ','を','ん','っ','ー','⌫'],
+      ['SPACE','。','、','！','？','ENTER']
+    ]
+  },
+
+  arabic: {
+    normal: [
+      ['ض','ص','ث','ق','ف','غ','ع','ه','خ','ح','ج','د'],
+      ['ش','س','ي','ب','ل','ا','ت','ن','م','ك','ط'],
+      ['ئ','ء','ؤ','ر','ﻻ','ى','ة','و','ز','ظ','⌫'],
+      ['SPACE','،','؟','!','.','ENTER']
+    ]
+  },
+
+  numbers: {
+    normal: [
+      ['1','2','3','4','5','6','7','8','9','0'],
+      ['+','-','×','÷','=','%','.',',','(',')','^','√'],
+      ['@','#','$','&','*','_','-','+','<','>','⌫'],
+      ['SPACE','!','?',':',';','"',"'",'ENTER']
+    ]
+  }
+};
+
+// ── Build and render keyboard ─────────────────────────
+function setKbLang(lang) {
+  kbLang  = lang;
+  kbShift = false;
+  // Update active button
+  document.querySelectorAll('.kb-lang-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('kbl-' + lang);
+  if (btn) btn.classList.add('active');
+  renderKeyboard();
+}
+
+function renderKeyboard() {
+  const layout  = KB_LAYOUTS[kbLang] || KB_LAYOUTS['english'];
+  const rows    = (kbShift && layout.shift) ? layout.shift : layout.normal;
+  const container = document.getElementById('kb-keys');
+  container.innerHTML = '';
+
+  rows.forEach(row => {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'kb-row';
+
+    row.forEach(key => {
+      const btn = document.createElement('button');
+      btn.className = 'kb-key';
+
+      if (key === 'SPACE') {
+        btn.className += ' space';
+        btn.textContent = 'SPACE';
+      } else if (key === '⌫') {
+        btn.className += ' backspace';
+        btn.textContent = '⌫ Del';
+      } else if (key === 'ENTER') {
+        btn.className += ' enter-key';
+        btn.textContent = '↵ Enter';
+      } else if (key === 'CAPS') {
+        btn.className += ' action wider';
+        btn.textContent = kbCapsLock ? '⇪ CAPS ON' : '⇪ Caps';
+        if (kbCapsLock) btn.style.color = 'var(--accent2)';
+      } else if (key === 'SHIFT') {
+        btn.className += ' action wide';
+        btn.textContent = '⇧ Shift';
+      } else {
+        // Regular key — size based on character width
+        if ([...key].length > 1) btn.className += ' wide';
+      }
+
+      if (key !== 'SPACE' && key !== '⌫' && key !== 'ENTER' && key !== 'CAPS' && key !== 'SHIFT') {
+        btn.textContent = key;
+      }
+
+      btn.addEventListener('mousedown', (e) => {
+        e.preventDefault();   // prevent textarea from losing focus
+        handleKbKey(key);
+      });
+
+      rowDiv.appendChild(btn);
+    });
+
+    container.appendChild(rowDiv);
+  });
+}
+
+function handleKbKey(key) {
+  const input = document.getElementById('msg-input');
+  const start = input.selectionStart;
+  const end   = input.selectionEnd;
+  const val   = input.value;
+
+  if (key === '⌫') {
+    // Backspace — delete character before cursor
+    if (start > 0) {
+      input.value = val.slice(0, start - 1) + val.slice(end);
+      input.setSelectionRange(start - 1, start - 1);
+    }
+  } else if (key === 'ENTER') {
+    // Send the message
+    sendMessage();
+    return;
+  } else if (key === 'SPACE') {
+    input.value = val.slice(0, start) + ' ' + val.slice(end);
+    input.setSelectionRange(start + 1, start + 1);
+  } else if (key === 'CAPS') {
+    kbCapsLock = !kbCapsLock;
+    kbShift    = kbCapsLock;
+    renderKeyboard();
+    return;
+  } else if (key === 'SHIFT') {
+    kbShift = !kbShift;
+    renderKeyboard();
+    return;
+  } else {
+    // Insert character at cursor position
+    input.value = val.slice(0, start) + key + val.slice(end);
+    input.setSelectionRange(start + key.length, start + key.length);
+  }
+
+  // Keep focus on textarea
+  input.focus();
+  autoResize(input);
+}
+
+function toggleKeyboard() {
+  const panel = document.getElementById('keyboard-panel');
+  const btn   = document.getElementById('kb-btn');
+  const isOpen = panel.classList.toggle('open');
+  btn.classList.toggle('kb-open', isOpen);
+  if (isOpen) {
+    renderKeyboard();
+    // Auto-select keyboard matching the target language
+    const langToKb = {
+      'Tamil':'tamil','Hindi':'hindi','Spanish':'spanish',
+      'French':'french','German':'german','Japanese':'japanese',
+      'Arabic':'arabic','English':'english'
+    };
+    const autoLang = langToKb[targetLang] || langToKb[nativeLang] || 'english';
+    setKbLang(autoLang);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════════
+loadConfig();
+// Set TTS button to ON state at startup
+window.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('tts-btn');
+  if (btn) { btn.classList.add('tts-on'); btn.title = 'Bot voice ON — click to turn off'; }
+});
+</script>
+</body>
+</html>
